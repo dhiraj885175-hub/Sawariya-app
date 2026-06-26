@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Delete Request - Sawariya</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 16px;
+      color: #333;
+    }
+    h1 {
+      font-size: 22px;
+      color: #b3173c;
+      margin-bottom: 8px;
+    }
+    .box {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .box h2 {
+      font-size: 16px;
+      color: #b3173c;
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+    .box p, .box li {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #444;
+    }
+    .box ul {
+      padding-left: 18px;
+      margin: 8px 0;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #333;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+      background: #fafafa;
+      color: #333;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: #b3173c;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      margin-top: 4px;
+    }
+    .btn:hover {
+      background: #901230;
+    }
+    .warning {
+      background: #fff5f7;
+      border-left: 4px solid #b3173c;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: #b3173c;
+    }
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Account Delete Request</h1>
+  <p style="font-size:14px;color:#666;margin-top:0;margin-bottom:16px;">Sawariya App</p>
+
+  <div class="box">
+    <h2>⚠️ Before You Proceed</h2>
+    <div class="warning">
+      Account deletion is permanent and cannot be undone.
+    </div>
+    <p>Once your account is deleted, the following data will be permanently removed:</p>
+    <ul>
+      <li>Your profile and personal information</li>
+      <li>Order history and transaction records</li>
+      <li>Saved addresses and preferences</li>
+      <li>Any active subscriptions or rewards</li>
+    </ul>
+  </div>
+
+  <div class="box">
+    <h2>Submit Deletion Request</h2>
+
+    <label for="name">Full Name</label>
+    <input type="text" id="name" placeholder="Enter your full name">
+
+    <label for="email">Registered Email</label>
+    <input type="email" id="email" placeholder="Enter your registered email">
+
+    <label for="phone">Registered Phone Number</label>
+    <input type="tel" id="phone" placeholder="Enter your phone number">
+
+    <label for="reason">Reason for Deletion (optional)</label>
+    <textarea id="reason" placeholder="Tell us why you want to delete your account..."></textarea>
+
+    <button class="btn" onclick="handleSubmit()">Submit Deletion Request</button>
+  </div>
+
+  <div class="box">
+    <h2>What Happens Next?</h2>
+    <ul>
+      <li>We will verify your identity within <strong>2–3 business days</strong>.</li>
+      <li>You will receive a confirmation email once the request is processed.</li>
+      <li>Your account will be permanently deleted within <strong>30 days</strong>.</li>
+      <li>For help, contact us at <strong>support@sawariya.app</strong></li>
+    </ul>
+  </div>
+
+  <footer>
+    &copy; 2024 Sawariya App. All rights reserved.
+  </footer>
+
+  <script>
+    function handleSubmit() {
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+
+      if (!name || !email || !phone) {
+        alert('Please fill in all required fields (Name, Email, Phone).');
+        return;
+      }
+
+      alert('Your account deletion request has been submitted. We will contact you within 2–3 business days.');
+    }
+  </script>
+
+</body>
+</html>

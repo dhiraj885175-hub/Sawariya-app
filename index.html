@@ -1839,30 +1839,73 @@ function initFB(){
           }).catch(()=>{});
         }
       }else{
-        // Firebase ne bataya ki asal mein koi session hi nahi hai (ya
-        // expire ho chuka) — agar humne cache ke bharose optimistically
-        // Home dikha di thi, ab sahi se Login screen par le aao.
-        user=null;
-        show('auth');
-        // INSTANT-PRODUCTS FIX: bilkul naye/fresh install par (jahan
-        // koi purana anonymous ya real session hi nahi hai), u yahan
-        // null hota hai — matlab abhi tak Firestore ko padhne ke liye
-        // koi bhi authenticated session nahi hai. Pehle is case mein
-        // products load karna tab tak shuru hi nahi hota tha jab tak
-        // customer khud "Continue as Guest" ya login na dabaye.
-        // Fix: yahan ek silent, invisible anonymous sign-in shuru kar
-        // dete hain (koi navigation nahi, sirf background mein) — bas
-        // taaki Firestore listeners turant chal sakein. Ye sign-in
-        // resolve hote hi onAuthStateChanged dobara fire hoga (u.isAnonymous
-        // wale branch mein), jo waha se startCatalogListeners() call kar
-        // dega. "Continue as Guest" button baad mein isi session ko
-        // reuse kar lega (jaisa doGuestLogin() mein already hota hai) —
-        // koi extra network round-trip nahi lagega.
-        if(!window.__silentAnonBootTried){
-          window.__silentAnonBootTried=true;
-          AUTH.signInAnonymously().catch(function(e){
-            console.log('Background silent anon sign-in nahi hua:',e.message);
-          });
+        // Firebase ne bataya ki abhi iske paas koi session nahi hai.
+        //
+        // LOGIN-FLASH FIX: Pehle yahan hum HAMESHA seedha show('auth') kar
+        // dete the — chahe customer pehle se login/guest ho aur humne
+        // localStorage cache (sw_cu) ke bharose optimistically Home already
+        // dikha di ho (__swBootSequence dekho). Iski wajah se kai baar
+        // (khaaskar Median/WebView app mein jahan Firebase ka apna
+        // IndexedDB session thoda slow restore hota hai ya kabhi-kabhi
+        // WebView storage clear ho jaati hai) ye hota tha: app khula →
+        // Home turant dikhi (cache se) → phir ye "u=null" wala pehla
+        // callback aaya → Login screen par jabardasti bhej diya jaata
+        // tha → thodi der baad asli session restore hoke wapas Home aa
+        // jaati thi. Matlab customer ko ek galat "Login" flash dikhta
+        // tha jabki wo pehle se hi logged-in/guest tha.
+        //
+        // FIX: agar humne already optimistically Home dikha di thi
+        // (window.__optimisticUser === true, jo __swBootSequence set
+        // karta hai jab localStorage mein purana session milta hai), to
+        // ab is pehle "u=null" par bharosa karke Login par MAT jaao —
+        // Home par hi rehne do. Guest customer ke liye background mein
+        // chup-chaap ek naya anonymous session bana dete hain (isse
+        // customer ko kuch dikhega nahi, aur jab ye resolve hoga to
+        // upar wala u.isAnonymous branch chalega aur Home par hi rahega,
+        // koi navigation nahi hoga). Real (email/password) login customer
+        // ke liye cached user data se Home par hi continue karte hain —
+        // agar unka session sach mein expire ho chuka hai to wo jab bhi
+        // koi protected action (order, wallet, etc.) try karenge tab
+        // sahi tarah se Login maanga jayega, lekin app khulte hi bewajah
+        // Login screen nahi dikhegi.
+        const __hadCachedSession = window.__optimisticUser===true;
+        if(__hadCachedSession){
+          const __savedGuestId=localStorage.getItem('sw_guest_uid');
+          if(__savedGuestId && !window.__silentAnonBootTried){
+            window.__silentAnonBootTried=true;
+            AUTH.signInAnonymously().catch(function(e){
+              console.log('Background silent guest re-auth nahi hua:',e.message);
+            });
+          }
+          // Home par hi raho — 'user' object localStorage se already set
+          // hai (__swBootSequence ne set kiya tha), koi screen change nahi.
+          startCatalogListeners();
+        }else{
+          // Koi cached session mila hi nahi — genuinely naya/fresh install
+          // ya customer pehle kabhi login/guest nahi tha. Yahan Login
+          // screen dikhana hi sahi (business rule) hai.
+          user=null;
+          show('auth');
+          // INSTANT-PRODUCTS FIX: bilkul naye/fresh install par (jahan
+          // koi purana anonymous ya real session hi nahi hai), u yahan
+          // null hota hai — matlab abhi tak Firestore ko padhne ke liye
+          // koi bhi authenticated session nahi hai. Pehle is case mein
+          // products load karna tab tak shuru hi nahi hota tha jab tak
+          // customer khud "Continue as Guest" ya login na dabaye.
+          // Fix: yahan ek silent, invisible anonymous sign-in shuru kar
+          // dete hain (koi navigation nahi, sirf background mein) — bas
+          // taaki Firestore listeners turant chal sakein. Ye sign-in
+          // resolve hote hi onAuthStateChanged dobara fire hoga (u.isAnonymous
+          // wale branch mein), jo waha se startCatalogListeners() call kar
+          // dega. "Continue as Guest" button baad mein isi session ko
+          // reuse kar lega (jaisa doGuestLogin() mein already hota hai) —
+          // koi extra network round-trip nahi lagega.
+          if(!window.__silentAnonBootTried){
+            window.__silentAnonBootTried=true;
+            AUTH.signInAnonymously().catch(function(e){
+              console.log('Background silent anon sign-in nahi hua:',e.message);
+            });
+          }
         }
       }
     });
@@ -3824,10 +3867,48 @@ function renderProds(){
       nextBannerAt=(i+1)+11; // next gap within the 10-12 range
     }
   }
-  el.innerHTML=parts.join('');
-  observeNewArrBanners();
-  observeProdImages();
-  __forceProdScrollRepaint();
+  // ANR SAFETY FIX: pehle poora grid (200+ products tak) ek hi jhatke mein
+  // `innerHTML=` se ban jaata tha — chhote catalog par ye theek tha, lekin
+  // slow internet par jab poora catalog ek saath, deri se, ek load mein
+  // aata hai (aur saath hi list bhi badi ho), to itna saara HTML ek hi
+  // synchronous step mein parse+build karna kabhi-kabhi main thread ko
+  // itni der tak busy rakh deta tha ki Android "isn't responding" bol deta
+  // tha — bilkul waisa hi jaisa upar getBoundingClientRect wale ANR fix
+  // mein already explain kiya gaya hai, bas is baar culprit innerHTML
+  // build tha, image-loop nahi.
+  //
+  // FIX: poora grid ek saath banane ke bajaye, chhote batches (16 items)
+  // mein banate hain — pehla batch turant (customer ko turant kuch dikhta
+  // hai), baaki batches agle animation frames mein spread ho jaate hain.
+  // Isse total kaam bilkul wahi hai, bas kabhi ek saath itna nahi hota ki
+  // browser "not responding" maan le — har batch ke beech browser ko
+  // touch/scroll jaisa pending input process karne ka mauka milta hai.
+  //
+  // STALE-RENDER GUARD: agar filter/search badalne se renderProds() dobara
+  // bulaya jaye jab pichla batch-loop abhi chal hi raha ho, to purana loop
+  // khud-ba-khud rुक jaana chahiye (warna wo purani list ke batches nayi
+  // list ke upar chipka dega). __prodRenderGen isi ke liye hai.
+  window.__prodRenderGen=(window.__prodRenderGen||0)+1;
+  const __myRenderGen=window.__prodRenderGen;
+  el.innerHTML='';
+  const BATCH_SIZE=16;
+  let __bi=0;
+  function __renderNextBatch(){
+    if(__myRenderGen!==window.__prodRenderGen) return; // ek naya render shuru ho chuka — ye purana loop chhod do
+    const batch=parts.slice(__bi,__bi+BATCH_SIZE);
+    if(batch.length){ el.insertAdjacentHTML('beforeend',batch.join('')); }
+    __bi+=BATCH_SIZE;
+    // Jo naye cards abhi add hue, unki (screen ke paas waali) photos turant
+    // load karo — customer ko batch-by-batch bhi photos turant dikhti rahengi.
+    observeProdImages();
+    if(__bi<parts.length){
+      requestAnimationFrame(__renderNextBatch);
+    } else {
+      observeNewArrBanners();
+      __forceProdScrollRepaint();
+    }
+  }
+  __renderNextBatch();
 }
 // Sirf wahi product photo load karo jo screen ke paas aa rahi hai — puri list nahi.
 // Jaise-jaise user scroll karega, waise-waise photos load/unload hongi (memory cap rehta hai).
